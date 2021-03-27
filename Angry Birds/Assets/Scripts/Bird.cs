@@ -8,6 +8,9 @@ public class Bird : MonoBehaviour
     [Tooltip("The amount of force to apply when launching the Bird")]
     private float _launchForce = 300f;
     [SerializeField]
+    [Tooltip("The maximum distance the player can drag the Bird backwards")]
+    private float _maxDragDistance = 3f;
+    [SerializeField]
     [Tooltip("The colour to apply to the Bird when dragging")]
     private Color _dragColour = Color.red;
 
@@ -15,8 +18,9 @@ public class Bird : MonoBehaviour
     private SpriteRenderer _spriteRenderer;
     private Camera _mainCamera;
 
-    private Vector3 _initialPosition;
+    private Vector2 _initialPosition;
     private float _resetAfterIdle = 3f;
+    private bool _isDraggable = true;
 
     private void Start()
     {
@@ -27,7 +31,7 @@ public class Bird : MonoBehaviour
 
         _mainCamera = Camera.main;
 
-        _initialPosition = transform.position;
+        _initialPosition = _rigidbody2D.position;
     }
 
     private void Update()
@@ -38,24 +42,42 @@ public class Bird : MonoBehaviour
         }
     }
 
-    private void OnMouseDown()
-    {
-        _spriteRenderer.color = _dragColour;
-    }
-
     private void OnMouseUp()
     {
-        _spriteRenderer.color = Color.white;
+        if (_isDraggable)
+        {
+            _isDraggable = false;
+            _spriteRenderer.color = Color.white;
 
-        Vector2 launchDirection = _initialPosition - transform.position;
-        _rigidbody2D.isKinematic = false;
-        _rigidbody2D.AddForce(launchDirection.normalized * _launchForce);
+            Vector2 launchDirection = _initialPosition - _rigidbody2D.position;
+            _rigidbody2D.isKinematic = false;
+            _rigidbody2D.AddForce(launchDirection.normalized * _launchForce);
+        }
     }
 
     private void OnMouseDrag()
     {
-        Vector3 mousePosition = _mainCamera.ScreenToWorldPoint(Input.mousePosition);
-        transform.position = new Vector3(mousePosition.x, mousePosition.y, transform.position.z);
+        if (_isDraggable)
+        {
+            _spriteRenderer.color = _dragColour;
+
+            Vector3 mousePosition = _mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            Vector2 desiredPosition = mousePosition;
+
+            // Clamp position
+            float distance = Vector2.Distance(desiredPosition, _initialPosition);
+            if (distance > _maxDragDistance)
+            {
+                Vector2 direction = (desiredPosition - _initialPosition).normalized;
+                desiredPosition = _initialPosition + (direction * _maxDragDistance);
+            }
+            if (desiredPosition.x > _initialPosition.x)
+            {
+                desiredPosition.x = _initialPosition.x;
+            }
+
+            _rigidbody2D.position = desiredPosition;
+        }
     }
 
     private void OnCollisionEnter2D(Collision2D other)
@@ -68,9 +90,9 @@ public class Bird : MonoBehaviour
         _rigidbody2D.isKinematic = true;
         _rigidbody2D.velocity = Vector2.zero;
         _rigidbody2D.angularVelocity = 0;
-
-        transform.position = _initialPosition;
-        transform.rotation = Quaternion.Euler(Vector3.zero);
+        _rigidbody2D.position = _initialPosition;
+        _rigidbody2D.rotation = 0;
+        _isDraggable = true;
     }
 
     IEnumerator ResetAfterDelay()
