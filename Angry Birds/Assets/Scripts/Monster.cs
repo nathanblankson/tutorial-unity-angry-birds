@@ -4,9 +4,27 @@ using UnityEngine;
 
 public class Monster : MonoBehaviour
 {
+    [SerializeField]
+    [Tooltip("The sprite to show when the Monster dies")]
+    private Sprite _deadSprite;
+    [SerializeField]
+    [Tooltip("The particle system for the death particles")]
+    private ParticleSystem _particleSystem;
+
+    private Animator _animator;
+    private SpriteRenderer _spriteRenderer;
+
+    private bool _isDead = false;
+
+    private void Start()
+    {
+        _animator = GetComponent<Animator>();
+        _spriteRenderer = GetComponent<SpriteRenderer>();
+    }
+
     private void OnCollisionEnter2D(Collision2D other)
     {
-        if (ShouldDieFromCollision(other))
+        if (!_isDead && ShouldDieFromCollision(other))
         {
             Die();
         }
@@ -31,7 +49,9 @@ public class Monster : MonoBehaviour
 
     private void Die()
     {
-        Debug.Log("Die");
-        gameObject.SetActive(false);
+        _isDead = true;
+        _animator.enabled = false;
+        _spriteRenderer.sprite = _deadSprite;
+        _particleSystem.Play();
     }
 }
